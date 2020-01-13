@@ -15,12 +15,12 @@ type Entry struct {
 }
 
 // TODO: dit gaat nog steeds niet geweldig wanneer gestart van ruby timetrap
-func (e *Entry) Running() (time.Duration, bool) {
+func (e *Entry) Duration() (time.Duration, bool) {
 	isRunning := e.end == nil
 	if isRunning {
-		return time.Now().Sub(e.start.UTC()), true
+		return time.Now().Sub(e.start), true
 	} else {
-		return 0, false
+		return e.end.Sub(e.start), false
 	}
 }
 

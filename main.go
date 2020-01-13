@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	nd "github.com/tj/go-naturaldate"
 )
 
 // TODO: make it posisble to use this program without running ruby timetrap
@@ -39,88 +37,58 @@ func usage() {
 	os.Exit(1)
 }
 
-func main() {
-	fs := MakeFlagSet(map[string]string{
-		"id": "0",
-
-		"start": "",
-		"end":   "",
-		"at":    "",
-	})
-
-	if err := fs.Parse(); err != nil {
-		panic(err)
-	}
-
-	id, err := strconv.ParseUint(fs.Values["id"], 10, 64)
-	if err != nil {
-		panic(err)
-	}
-	startString := fs.Values["start"]
-	endString := fs.Values["end"]
-	atString := fs.Values["at"]
-
-	startDate, err := nd.Parse(startString, time.Now())
-	if err != nil {
-		startDate = time.Time{}
-	}
-	endDate, err := nd.Parse(endString, time.Now())
-	if err != nil {
-		endDate = time.Time{}
-	}
-	atDate, err := nd.Parse(atString, time.Now())
-	if err != nil {
-		atDate = time.Time{}
-	}
-
+func getState() (*State, error) {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	db, err := sql.Open("sqlite3", path.Join(homedir, ".timetrap.db"))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	state, err := MakeState(db)
+	return MakeState(db)
+}
+
+func main() {
+	input, err := GetInput()
 	if err != nil {
 		panic(err)
 	}
 
-	if len(fs.Strings) == 0 {
+	state, err := getState()
+	if err != nil {
+		panic(err)
+	}
+
+	if input.Command == "" {
 		usage()
 	}
-	command := fs.Strings[0]
 
-	if id == 0 {
-		if state.CurrentEntry == nil {
-			id = state.LastCheckoutID
+	// if ID is not given..
+	if input.ID == 0 {
+		// .. ID is the current entry
+		if state.CurrentEntry != nil {
+			input.ID = state.CurrentEntry.id
+			// .. or the last checkout ID.
 		} else {
-			id = state.CurrentEntry.id
+			input.ID = state.LastCheckoutID
 		}
 	}
 
-	var note string
-	for i := 1; i < len(fs.Strings); i++ {
-		if i > 1 {
-			note += " "
-		}
-
-		note += fs.Strings[i]
-	}
-
-	sheet := state.CurrentSheet
 	commands := map[string]func() error{
 		"in": func() error {
-			start := startDate
+			start := input.Start
 			if start == (time.Time{}) {
-				start = atDate
+				start = input.At
 			}
 			if start == (time.Time{}) {
 				start = time.Now()
 			}
 
-			id, err := state.StartEntry(note, sheet, start)
+			sheet := state.CurrentSheet
+
+			id, err := state.StartEntry(input.Note, sheet, start)
 			if err != nil {
 				return err
 			}
@@ -129,41 +97,46 @@ func main() {
 			return nil
 		},
 		"out": func() error {
-			end := endDate
+			end := input.End
 			if end == (time.Time{}) {
-				end = atDate
+				end = input.At
 			}
 			if end == (time.Time{}) {
 				end = time.Now()
 			}
 
-			entry, err := state.GetEntry(id)
+			entry, err := state.GetEntry(input.ID)
 			if err != nil {
 				return err
 			} else if entry == nil {
-				return fmt.Errorf("no entry with id %d found", id)
+				return fmt.Errorf("no entry with id %d found", input.ID)
 			}
 
-			if err := state.StopEntry(id, end); err != nil {
+			if err := state.StopEntry(input.ID, end); err != nil {
 				return err
 			}
 
-			fmt.Printf("Checked out of sheet \"%s\" (%d).\n", sheet, id)
+			sheet := state.CurrentSheet
+
+			fmt.Printf("Checked out of sheet \"%s\" (%d).\n", sheet, input.ID)
 			return nil
 		},
 		"resume": func() error {
-			start := startDate
+			start := input.Start
 			if start == (time.Time{}) {
-				start = atDate
+				start = input.At
 			}
 			if start == (time.Time{}) {
 				start = time.Now()
 			}
 
-			entry, err := state.GetEntry(id)
+			entry, err := state.GetEntry(input.ID)
 			if err != nil {
 				return err
 			}
+
+			sheet := state.CurrentSheet
+			id := input.ID
 
 			if entry == nil {
 				entries, err := state.GetAllEntries(sheet)
@@ -189,33 +162,35 @@ func main() {
 				return err
 			}
 
+			sheet := state.CurrentSheet
+
 			if entry == nil {
 				fmt.Fprintf(os.Stderr, "*%s: not running\n", sheet)
 				return nil
 			}
 
-			duration, _ := entry.Running()
+			duration, _ := entry.Duration()
 			fmt.Printf("*%s: %s (%s)\n", sheet, formatDuration(duration), entry.note)
 			return nil
 		},
 		"edit": func() error {
-			entry, err := state.GetEntry(id)
+			entry, err := state.GetEntry(input.ID)
 			if err != nil {
 				return err
 			}
 
 			any := false
-			if startDate != (time.Time{}) {
+			if input.Start != (time.Time{}) {
 				any = true
-				entry.start = startDate
+				entry.start = input.Start
 			}
-			if endDate != (time.Time{}) {
+			if input.End != (time.Time{}) {
 				any = true
-				entry.end = &endDate
+				entry.end = &input.End
 			}
-			if note != "" {
+			if input.Note != "" {
 				any = true
-				entry.note = note
+				entry.note = input.Note
 			}
 
 			if !any {
@@ -235,7 +210,15 @@ func main() {
 		},
 
 		"display": func() error {
-			entries, err := state.GetAllEntries("")
+			var sheet string
+			switch input.Note {
+			case "":
+				sheet = state.CurrentSheet
+			case "all", "full": // TODO full /= all
+				sheet = ""
+			}
+
+			entries, err := state.GetAllEntries(sheet)
 			if err != nil {
 				return err
 			}
@@ -255,12 +238,7 @@ func main() {
 					end = entry.end.Format("15:04:05")
 				}
 
-				var duration time.Duration
-				if entry.end != nil {
-					duration = entry.end.Sub(entry.start)
-				} else {
-					duration = time.Now().Sub(entry.start)
-				}
+				duration, _ := entry.Duration()
 				dayDuration += duration
 
 				fmt.Fprintf(
@@ -305,13 +283,13 @@ func main() {
 		},
 
 		"sheet": func() error {
-			if strings.Contains(note, " ") {
+			if strings.Contains(input.Note, " ") {
 				return errors.New("name cannot contain spaces")
-			} else if note != "" {
-				if err := state.SwitchSheet(note); err != nil {
+			} else if input.Note != "" {
+				if err := state.SwitchSheet(input.Note); err != nil {
 					return err
 				}
-				fmt.Printf("Switching to sheet \"%s\"\n", note)
+				fmt.Printf("Switching to sheet \"%s\"\n", input.Note)
 				return nil
 			}
 
@@ -320,22 +298,56 @@ func main() {
 				return err
 			}
 
+			foundCurrent := false
+
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 
 			fmt.Fprintf(w, " Timesheet\tRunning\tToday\tTotal Time\n")
 			for _, sheet := range sheets {
 				curr, last := sheet == state.CurrentSheet, sheet == state.LastSheet
 
-				prefix := ""
+				prefix := " "
 				if curr {
+					foundCurrent = true
 					prefix = "*"
 				} else if last {
 					prefix = "-"
 				}
 
-				running := "TODO"
-				today := "TODO"
-				total := "TODO"
+				entries, err := state.GetAllEntries(sheet)
+				if err != nil {
+					return err
+				}
+
+				running := SumDuration(entries, func(e *Entry) bool {
+					_, running := e.Duration()
+					return running
+				})
+				today := SumDuration(entries, func(e *Entry) bool {
+					return sameDate(time.Now(), e.start)
+				})
+				total := SumDuration(entries, func(e *Entry) bool {
+					return true
+				})
+
+				if running == 0 && today == 0 {
+					for _, entry := range entries {
+						duration, isRunning := entry.Duration()
+						if isRunning {
+							running += duration
+						}
+					}
+				}
+
+				fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n", prefix, sheet, formatDuration(running), formatDuration(today), formatDuration(total))
+			}
+
+			if !foundCurrent {
+				prefix := "*"
+				sheet := state.CurrentSheet
+				running := "0:00:00"
+				today := "0:00:00"
+				total := "0:00:00"
 				fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n", prefix, sheet, running, today, total)
 			}
 
@@ -343,47 +355,47 @@ func main() {
 		},
 
 		"kill": func() error {
-			if fs.Values["id"] == "0" { // kill timesheet
+			if input.Raw["id"] == "0" { // kill timesheet
 				sheets, err := state.GetAllSheets()
 				if err != nil {
 					return err
 				}
 				has := false
 				for _, sheet := range sheets {
-					if sheet == note {
+					if sheet == input.Note {
 						has = true
 						break
 					}
 				}
 				if !has {
-					return fmt.Errorf("no sheet with name %s found", note)
+					return fmt.Errorf("no sheet with name %s found", input.Note)
 				}
 
-				str := fmt.Sprintf("are you sure you want to delete sheet \"%s\"?", note)
+				str := fmt.Sprintf("are you sure you want to delete sheet \"%s\"?", input.Note)
 				if !confirm(str, false) {
 					return nil
 				}
 
-				if err := state.RemoveSheet(note); err != nil {
+				if err := state.RemoveSheet(input.Note); err != nil {
 					return err
 				}
 				fmt.Println("it's killed")
 				return nil
 			}
 
-			entry, err := state.GetEntry(id)
+			entry, err := state.GetEntry(input.ID)
 			if err != nil {
 				return err
 			} else if entry == nil {
-				return fmt.Errorf("not entry with id %d found", id)
+				return fmt.Errorf("not entry with id %d found", input.ID)
 			}
 
-			str := fmt.Sprintf("are you sure you want to delete entry #%d?", id)
+			str := fmt.Sprintf("are you sure you want to delete entry #%d?", input.ID)
 			if !confirm(str, false) {
 				return nil
 			}
 
-			if err := state.RemoveEntry(id); err != nil {
+			if err := state.RemoveEntry(input.ID); err != nil {
 				return err
 			}
 			fmt.Println("it's killed")
@@ -393,7 +405,7 @@ func main() {
 
 	var fullCommand string
 	for key := range commands {
-		hasPrefix := strings.HasPrefix(key, command)
+		hasPrefix := strings.HasPrefix(key, input.Command)
 		if hasPrefix && fullCommand == "" {
 			fullCommand = key
 		} else if hasPrefix {
@@ -405,7 +417,7 @@ func main() {
 
 	fn := commands[fullCommand]
 	if fn == nil {
-		fmt.Fprintf(os.Stderr, "unknown command %s\n", command)
+		fmt.Fprintf(os.Stderr, "unknown command %s\n", input.Command)
 		usage()
 		return
 	}

@@ -68,3 +68,16 @@ func confirm(prompt string, defaultValue bool) bool {
 		}
 	}
 }
+
+func SumDuration(entries []*Entry, fn func(*Entry) bool) time.Duration {
+	var res time.Duration
+
+	for _, entry := range entries {
+		if fn(entry) {
+			duration, _ := entry.Duration()
+			res += duration
+		}
+	}
+
+	return res
+}
