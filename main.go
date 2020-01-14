@@ -389,6 +389,24 @@ func main() {
 		return nil
 	})
 
+	commands.AddCommand("help", "show usage of a command", "<command>", func() error {
+		if input.Note == "" {
+			return errors.New("help requires a command")
+		}
+
+		cmds := commands.GetByPrefix(input.Note)
+		if len(cmds) == 0 {
+			return fmt.Errorf("unknown command %s", input.Command)
+		} else if len(cmds) > 1 {
+			return errors.New("ambigious command")
+		}
+
+		cmd := cmds[0]
+		fmt.Fprintf(os.Stderr, "%s: %s\n\t%s\n", cmd.Name, cmd.Description, cmd.Usage)
+
+		return nil
+	})
+
 	if input.Command == "" {
 		usage()
 	}
