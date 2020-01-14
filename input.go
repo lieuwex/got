@@ -3,6 +3,7 @@ package main
 import (
 	"got/flag"
 	"strconv"
+	"strings"
 	"time"
 
 	nd "github.com/tj/go-naturaldate"
@@ -66,6 +67,7 @@ func GetInput() (Input, error) {
 
 		res.Note += fs.Strings[i]
 	}
+	res.Note = strings.TrimSpace(res.Note)
 
 	res.Raw = fs.Values
 
