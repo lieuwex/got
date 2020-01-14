@@ -136,6 +136,10 @@ func main() {
 		id := input.ID
 
 		if entry == nil {
+			if rawId := input.Raw["id"]; rawId != "0" {
+				return fmt.Errorf("no entry with ID %s found", rawId)
+			}
+
 			entries, err := state.GetAllEntries(sheet)
 			if err != nil {
 				return err
