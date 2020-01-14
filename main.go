@@ -288,6 +288,17 @@ func main() {
 		foundCurrent := false
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		printInfo := func(prefix, sheet string, running, today, total time.Duration) {
+			fmt.Fprintf(
+				w,
+				"%s%s\t%s\t%s\t%s\n",
+				prefix,
+				sheet,
+				formatDuration(running),
+				formatDuration(today),
+				formatDuration(total),
+			)
+		}
 
 		fmt.Fprintf(w, " Timesheet\tRunning\tToday\tTotal Time\n")
 		for _, sheet := range sheets {
@@ -326,16 +337,11 @@ func main() {
 				}
 			}
 
-			fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n", prefix, sheet, formatDuration(running), formatDuration(today), formatDuration(total))
+			printInfo(prefix, sheet, running, today, total)
 		}
 
 		if !foundCurrent {
-			prefix := "*"
-			sheet := state.CurrentSheet
-			running := "0:00:00"
-			today := "0:00:00"
-			total := "0:00:00"
-			fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n", prefix, sheet, running, today, total)
+			printInfo("*", state.CurrentSheet, 0, 0, 0)
 		}
 
 		return w.Flush()
