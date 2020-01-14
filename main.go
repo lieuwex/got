@@ -211,7 +211,7 @@ func main() {
 	})
 
 	commands.AddCommand("display", "show all entries in the given sheet", "[SHEET/all/full (current)]", func() error {
-		var sheet string
+		sheet := input.Note
 		switch input.Note {
 		case "":
 			sheet = state.CurrentSheet
@@ -224,7 +224,11 @@ func main() {
 			return err
 		}
 
-		fmt.Printf("Timesheet: %s\n", state.CurrentSheet)
+		if len(entries) == 0 {
+			return fmt.Errorf("Can't find sheet matching \"%s\"", sheet)
+		}
+
+		fmt.Printf("Timesheet: %s\n", sheet)
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 
 		fmt.Fprintln(w, "Id\tDay\tStart      End\tDuration\tNotes")
