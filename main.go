@@ -19,8 +19,18 @@ import (
 var commands = MakeManager()
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Usage of %s\n", os.Args[0])
 
+	printFlag := func(name, description string) {
+		fmt.Fprintf(os.Stderr, "\t--%s: %s\n", name, description)
+	}
+	fmt.Fprintf(os.Stderr, "\nflags:\n")
+	printFlag("id", "the ID to manipulate/copy.  defaults to the current or last entry.")
+	printFlag("at", "the time to use, this can be equal to --start or --end depending on the context.  always has a lower priority than --start or --end.")
+	printFlag("start", "the start time to use")
+	printFlag("end", "the end time to use")
+
+	fmt.Fprintf(os.Stderr, "\ncommands:\n")
 	cmds := commands.GetByPrefix("")
 	for _, cmd := range cmds {
 		fmt.Fprintf(os.Stderr, "\t%s: %s\n", cmd.Name, cmd.Description)
@@ -64,7 +74,7 @@ func main() {
 		}
 	}
 
-	commands.AddCommand("in", "start an entry", "TODO", func() error {
+	commands.AddCommand("in", "start an entry", "[--start, --at (now)] [note (\"\")]", func() error {
 		start := input.Start
 		if start == (time.Time{}) {
 			start = input.At
@@ -83,7 +93,7 @@ func main() {
 		fmt.Printf("Checked into sheet \"%s\" (%d).\n", sheet, id)
 		return nil
 	})
-	commands.AddCommand("out", "stop an entry", "TODO", func() error {
+	commands.AddCommand("out", "stop an entry", "[--end, --at (now)] [--id (current)]", func() error {
 		end := input.End
 		if end == (time.Time{}) {
 			end = input.At
@@ -108,7 +118,7 @@ func main() {
 		fmt.Printf("Checked out of sheet \"%s\" (%d).\n", sheet, input.ID)
 		return nil
 	})
-	commands.AddCommand("resume", "resume an entry", "TODO", func() error {
+	commands.AddCommand("resume", "resume an entry", "[--start, --at (now)] [--id (last)]", func() error {
 		start := input.Start
 		if start == (time.Time{}) {
 			start = input.At
@@ -143,7 +153,7 @@ func main() {
 		fmt.Printf("Resuming \"%s\" from entry #%d with new ID #%d\n", entry.note, entry.id, newId)
 		return nil
 	})
-	commands.AddCommand("now", "edit an entry", "TODO", func() error {
+	commands.AddCommand("now", "shot the current entry", "", func() error {
 		entry, err := state.GetCurrentEntry()
 		if err != nil {
 			return err
@@ -160,7 +170,7 @@ func main() {
 		fmt.Printf("*%s: %s (%s)\n", sheet, formatDuration(duration), entry.note)
 		return nil
 	})
-	commands.AddCommand("edit", "edit an entry", "TODO", func() error {
+	commands.AddCommand("edit", "edit an entry", "[--id (current/last)] [--start] [--end] [note]", func() error {
 		entry, err := state.GetEntry(input.ID)
 		if err != nil {
 			return err
@@ -196,7 +206,7 @@ func main() {
 		return w.Flush()
 	})
 
-	commands.AddCommand("display", "show all entries in the given sheet", "TODO", func() error {
+	commands.AddCommand("display", "show all entries in the given sheet", "[SHEET/all/full (current)]", func() error {
 		var sheet string
 		switch input.Note {
 		case "":
@@ -269,7 +279,7 @@ func main() {
 		return w.Flush()
 	})
 
-	commands.AddCommand("sheet", "show sheets or change the current sheet", "TODO", func() error {
+	commands.AddCommand("sheet", "show sheets or change the current sheet", "[sheet]", func() error {
 		if strings.Contains(input.Note, " ") {
 			return errors.New("name cannot contain spaces")
 		} else if input.Note != "" {
@@ -347,7 +357,7 @@ func main() {
 		return w.Flush()
 	})
 
-	commands.AddCommand("kill", "delete an entry or sheet", "TODO", func() error {
+	commands.AddCommand("kill", "delete an entry or sheet", "--id <id>\n\t<sheet>", func() error {
 		if input.Raw["id"] == "0" { // kill timesheet
 			sheets, err := state.GetAllSheets()
 			if err != nil {
@@ -429,7 +439,7 @@ func main() {
 	}
 
 	if err := cmds[0].Fn(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, "%s\n\n", err)
 		usage()
 	}
 }
