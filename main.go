@@ -401,12 +401,12 @@ func main() {
 			return fmt.Errorf("not entry with id %d found", input.ID)
 		}
 
-		str := fmt.Sprintf("are you sure you want to delete entry #%d?", input.ID)
+		str := fmt.Sprintf("are you sure you want to delete entry #%d (\"%s\")?", entry.id, entry.note)
 		if !confirm(str, false) {
 			return nil
 		}
 
-		if err := state.RemoveEntry(input.ID); err != nil {
+		if err := state.RemoveEntry(entry.id); err != nil {
 			return err
 		}
 		fmt.Println("it's killed")
