@@ -63,7 +63,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "\ncommands:\n")
 	cmds := commands.GetByPrefix("")
 	for _, cmd := range cmds {
-		fmt.Fprintf(os.Stderr, "\t%s: %s\n", cmd.Name, cmd.Description)
+		fmt.Fprintf(os.Stderr, "\t%s: %s\n", strings.Join(cmd.Names, ", "), cmd.Description)
 	}
 
 	os.Exit(1)
@@ -104,7 +104,7 @@ func main() {
 		}
 	}
 
-	commands.AddCommand("in", "start an entry", "[--start, --at (now)] [note (\"\")]", func() error {
+	commands.AddCommand([]string{"in", "start"}, "start an entry", "[--start, --at (now)] [note (\"\")]", func() error {
 		start := input.Start
 		if start == (time.Time{}) {
 			start = input.At
@@ -123,7 +123,7 @@ func main() {
 		fmt.Printf("Checked into sheet \"%s\" (%d).\n", sheet, id)
 		return nil
 	})
-	commands.AddCommand("out", "stop an entry", "[--end, --at (now)] [--id (current)]", func() error {
+	commands.AddCommand([]string{"out", "end"}, "stop an entry", "[--end, --at (now)] [--id (current)]", func() error {
 		end := input.End
 		if end == (time.Time{}) {
 			end = input.At
@@ -148,7 +148,7 @@ func main() {
 		fmt.Printf("Checked out of sheet \"%s\" (%d).\n", sheet, input.ID)
 		return nil
 	})
-	commands.AddCommand("resume", "resume an entry", "[--start, --at (now)] [--id (last)]", func() error {
+	commands.AddCommand([]string{"resume"}, "resume an entry", "[--start, --at (now)] [--id (last)]", func() error {
 		start := input.Start
 		if start == (time.Time{}) {
 			start = input.At
@@ -187,7 +187,7 @@ func main() {
 		fmt.Printf("Resuming \"%s\" from entry #%d with new ID #%d\n", entry.Note, entry.ID, newId)
 		return nil
 	})
-	commands.AddCommand("now", "shot the current entry", "", func() error {
+	commands.AddCommand([]string{"now"}, "shot the current entry", "", func() error {
 		entry, err := state.GetCurrentEntry()
 		if err != nil {
 			return err
@@ -204,7 +204,7 @@ func main() {
 		fmt.Printf("*%s: %s (%s)\n", sheet, utils.FormatDuration(duration), entry.Note)
 		return nil
 	})
-	commands.AddCommand("edit", "edit an entry", "[--id (current/last)] [--start] [--end] [note]", func() error {
+	commands.AddCommand([]string{"edit"}, "edit an entry", "[--id (current/last)] [--start] [--end] [note]", func() error {
 		entry, err := state.GetEntry(input.ID)
 		if err != nil {
 			return err
@@ -240,7 +240,7 @@ func main() {
 		return w.Flush()
 	})
 
-	commands.AddCommand("display", "show all entries in the given sheet", "[SHEET/all/full (current)]", func() error {
+	commands.AddCommand([]string{"display"}, "show all entries in the given sheet", "[SHEET/all/full (current)]", func() error {
 		sheet := input.Note
 		switch input.Note {
 		case "":
@@ -258,14 +258,14 @@ func main() {
 			return fmt.Errorf("Can't find sheet matching \"%s\"", sheet)
 		}
 
-		var formatter formatters.JSON
+		var formatter formatters.Human
 		return formatter.Write(os.Stdout, &types.FormatterInput{
 			Sheet:   sheet,
 			Entries: entries[:],
 		})
 	})
 
-	commands.AddCommand("sheet", "show sheets or change the current sheet", "[sheet]", func() error {
+	commands.AddCommand([]string{"sheet"}, "show sheets or change the current sheet", "[sheet]", func() error {
 		if strings.Contains(input.Note, " ") {
 			return errors.New("name cannot contain spaces")
 		} else if input.Note != "" {
@@ -343,7 +343,7 @@ func main() {
 		return w.Flush()
 	})
 
-	commands.AddCommand("kill", "delete an entry or sheet", "--id <id>\n\t<sheet>", func() error {
+	commands.AddCommand([]string{"kill"}, "delete an entry or sheet", "--id <id>\n\t<sheet>", func() error {
 		if input.Raw["id"] == "0" { // kill timesheet
 			sheets, err := state.GetAllSheets()
 			if err != nil {
@@ -391,7 +391,7 @@ func main() {
 		return nil
 	})
 
-	commands.AddCommand("help", "show usage of a command", "<command>", func() error {
+	commands.AddCommand([]string{"help"}, "show usage of a command", "<command>", func() error {
 		if input.Note == "" {
 			return errors.New("help requires a command")
 		}
@@ -404,7 +404,7 @@ func main() {
 		}
 
 		cmd := cmds[0]
-		fmt.Fprintf(os.Stderr, "%s: %s\n\t%s\n", cmd.Name, cmd.Description, cmd.Usage)
+		fmt.Fprintf(os.Stderr, "%s: %s\n\t%s\n", strings.Join(cmd.Names, ", "), cmd.Description, cmd.Usage)
 
 		return nil
 	})

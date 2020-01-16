@@ -5,10 +5,27 @@ import (
 )
 
 type Command struct {
-	Name        string
+	Names       []string
 	Description string
 	Usage       string
 	Fn          func() error
+}
+
+func (c *Command) Match(val string) bool {
+	for _, name := range c.Names {
+		if name == val {
+			return true
+		}
+	}
+	return false
+}
+func (c *Command) MatchPrefix(prefix string) bool {
+	for _, name := range c.Names {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 type CommandManager struct {
@@ -20,13 +37,15 @@ func MakeManager() *CommandManager {
 	return &CommandManager{}
 }
 
-func (m *CommandManager) AddCommand(name, description, usage string, fn func() error) {
-	if m.GetByName(name) != nil {
-		panic("command already exist")
+func (m *CommandManager) AddCommand(names []string, description, usage string, fn func() error) {
+	for _, name := range names {
+		if m.GetByName(name) != nil {
+			panic("command already exist")
+		}
 	}
 
 	cmd := &Command{
-		Name:        name,
+		Names:       names,
 		Description: description,
 		Usage:       usage,
 		Fn:          fn,
@@ -38,7 +57,8 @@ func (m *CommandManager) GetByPrefix(prefix string) []*Command {
 	var res []*Command
 
 	for _, cmd := range m.commands {
-		hasPrefix := strings.HasPrefix(cmd.Name, prefix)
+		hasPrefix := cmd.MatchPrefix(prefix)
+
 		if hasPrefix {
 			res = append(res, cmd)
 		}
@@ -49,7 +69,7 @@ func (m *CommandManager) GetByPrefix(prefix string) []*Command {
 
 func (m *CommandManager) GetByName(name string) *Command {
 	for _, cmd := range m.commands {
-		if cmd.Name == name {
+		if cmd.Match(name) {
 			return cmd
 		}
 	}
