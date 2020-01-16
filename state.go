@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"got/types"
 	"strconv"
 	"time"
 )
@@ -12,7 +13,7 @@ type State struct {
 	db *sql.DB
 
 	LastCheckoutID uint64
-	CurrentEntry   *Entry
+	CurrentEntry   *types.Entry
 	CurrentSheet   string
 	LastSheet      string
 }
@@ -64,12 +65,12 @@ func (s *State) GetMeta() (map[string]string, error) {
 	return res, nil
 }
 
-func (s *State) GetEntry(id uint64) (*Entry, error) {
+func (s *State) GetEntry(id uint64) (*types.Entry, error) {
 	row := s.db.QueryRow("select * from entries where id = ?", id)
 
-	var e DatabaseEntry
+	var e types.DatabaseEntry
 
-	err := row.Scan(&e.id, &e.note, &e.start, &e.end, &e.sheet)
+	err := row.Scan(&e.ID, &e.Note, &e.Start, &e.End, &e.Sheet)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -130,7 +131,7 @@ func (s *State) ResumeEntry(id uint64, start time.Time) (uint64, error) {
 		return 0, fmt.Errorf("no entry with id %d found", id)
 	}
 
-	return s.StartEntry(entry.note, entry.sheet, start)
+	return s.StartEntry(entry.Note, entry.Sheet, start)
 }
 
 func (s *State) SetLastCheckoutId(id uint64) error {
@@ -150,7 +151,7 @@ func (s *State) GetCurrentSheet() (string, error) {
 	return res, err
 }
 
-func (s *State) GetCurrentEntry() (*Entry, error) {
+func (s *State) GetCurrentEntry() (*types.Entry, error) {
 	// HACK
 	row := s.db.QueryRow("select id from entries where end is null")
 	var id uint64
@@ -164,7 +165,7 @@ func (s *State) GetCurrentEntry() (*Entry, error) {
 	entry, err := s.GetEntry(id)
 	return entry, err
 }
-func (s *State) GetLastEntry(sheet string) (*Entry, error) {
+func (s *State) GetLastEntry(sheet string) (*types.Entry, error) {
 	entries, err := s.GetAllEntries(sheet)
 	if err != nil {
 		return nil, err
@@ -177,8 +178,8 @@ func (s *State) GetLastEntry(sheet string) (*Entry, error) {
 	return entries[len(entries)-1], nil
 }
 
-func (s *State) GetAllEntries(sheetName string) ([]*Entry, error) {
-	var res []*Entry
+func (s *State) GetAllEntries(sheetName string) ([]*types.Entry, error) {
+	var res []*types.Entry
 
 	var rows *sql.Rows
 	var err error
@@ -192,8 +193,8 @@ func (s *State) GetAllEntries(sheetName string) ([]*Entry, error) {
 	}
 
 	for rows.Next() {
-		var e DatabaseEntry
-		err := rows.Scan(&e.id, &e.note, &e.start, &e.end, &e.sheet)
+		var e types.DatabaseEntry
+		err := rows.Scan(&e.ID, &e.Note, &e.Start, &e.End, &e.Sheet)
 		if err != nil {
 			return res, nil
 		}

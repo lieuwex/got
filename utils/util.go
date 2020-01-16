@@ -1,13 +1,14 @@
-package main
+package utils
 
 import (
 	"fmt"
+	"got/types"
 	"os"
 	"strings"
 	"time"
 )
 
-func formatDuration(d time.Duration) string {
+func FormatDuration(d time.Duration) string {
 	d = d.Round(time.Second)
 
 	h := d / time.Hour
@@ -21,21 +22,21 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%01d:%02d:%02d", h, m, s)
 }
 
-func sameDate(a, b time.Time) bool {
+func SameDate(a, b time.Time) bool {
 	yA, mA, dA := a.Date()
 	yB, mB, dB := b.Date()
 
 	return yA == yB && mA == mB && dA == dB
 }
 
-func formatDate(date time.Time) string {
+func FormatDate(date time.Time) string {
 	return date.Format("2006-01-02 15:04:05.000000")
 }
-func parseDate(str string) (time.Time, error) {
+func ParseDate(str string) (time.Time, error) {
 	return time.Parse("2006-01-02 15:04:05.000000", str)
 }
 
-func confirm(prompt string, defaultValue bool) bool {
+func Confirm(prompt string, defaultValue bool) bool {
 	var hint string
 	if defaultValue {
 		hint = "Y/n"
@@ -69,7 +70,7 @@ func confirm(prompt string, defaultValue bool) bool {
 	}
 }
 
-func SumDuration(entries []*Entry, fn func(*Entry) bool) time.Duration {
+func SumDuration(entries []*types.Entry, fn func(*types.Entry) bool) time.Duration {
 	var res time.Duration
 
 	for _, entry := range entries {

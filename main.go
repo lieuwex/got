@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"got/formatters"
+	"got/types"
+	"got/utils"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -17,6 +21,32 @@ import (
 // first
 
 var commands = MakeManager()
+
+func writeEntry(e *types.Entry, w io.Writer) error {
+	end := ""
+	if e.End != nil {
+		end = e.End.Format("15:04:05")
+	}
+
+	var duration time.Duration
+	if e.End != nil {
+		duration = e.End.Sub(e.Start)
+	} else {
+		duration = time.Now().Sub(e.Start)
+	}
+
+	_, err := fmt.Fprintf(
+		w,
+		"%d\t%s\t%s - %s\t%s\t%s\n",
+		e.ID,
+		e.Start.Format("Mon Jan 2, 2006"),
+		e.Start.Format("15:04:05"),
+		end,
+		utils.FormatDuration(duration),
+		e.Note,
+	)
+	return err
+}
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s\n", os.Args[0])
@@ -67,7 +97,7 @@ func main() {
 		// if ID is not given..
 		if state.CurrentEntry != nil {
 			// .. ID is the current entry
-			input.ID = state.CurrentEntry.id
+			input.ID = state.CurrentEntry.ID
 		} else {
 			// .. or the last checkout ID.
 			input.ID = state.LastCheckoutID
@@ -146,7 +176,7 @@ func main() {
 			}
 
 			entry = entries[len(entries)-1]
-			id = entry.id
+			id = entry.ID
 		}
 
 		newId, err := state.ResumeEntry(id, start)
@@ -154,7 +184,7 @@ func main() {
 			return err
 		}
 
-		fmt.Printf("Resuming \"%s\" from entry #%d with new ID #%d\n", entry.note, entry.id, newId)
+		fmt.Printf("Resuming \"%s\" from entry #%d with new ID #%d\n", entry.Note, entry.ID, newId)
 		return nil
 	})
 	commands.AddCommand("now", "shot the current entry", "", func() error {
@@ -171,7 +201,7 @@ func main() {
 		}
 
 		duration, _ := entry.Duration()
-		fmt.Printf("*%s: %s (%s)\n", sheet, formatDuration(duration), entry.note)
+		fmt.Printf("*%s: %s (%s)\n", sheet, utils.FormatDuration(duration), entry.Note)
 		return nil
 	})
 	commands.AddCommand("edit", "edit an entry", "[--id (current/last)] [--start] [--end] [note]", func() error {
@@ -183,15 +213,15 @@ func main() {
 		any := false
 		if input.Start != (time.Time{}) {
 			any = true
-			entry.start = input.Start
+			entry.Start = input.Start
 		}
 		if input.End != (time.Time{}) {
 			any = true
-			entry.end = &input.End
+			entry.End = &input.End
 		}
 		if input.Note != "" {
 			any = true
-			entry.note = input.Note
+			entry.Note = input.Note
 		}
 
 		if !any {
@@ -199,14 +229,14 @@ func main() {
 			return nil
 		}
 
-		_, err = state.db.Exec("update entries set note = ?, start = ?, end = ? where id = ?", entry.note, entry.start, entry.end, entry.id)
+		_, err = state.db.Exec("update entries set note = ?, start = ?, end = ? where id = ?", entry.Note, entry.Start, entry.End, entry.ID)
 		if err != nil {
 			return err
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 		fmt.Fprintln(w, "Id\tDay\tStart      End\tDuration\tNotes")
-		entry.Write(w)
+		writeEntry(entry, w)
 		return w.Flush()
 	})
 
@@ -228,63 +258,11 @@ func main() {
 			return fmt.Errorf("Can't find sheet matching \"%s\"", sheet)
 		}
 
-		fmt.Printf("Timesheet: %s\n", sheet)
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-
-		fmt.Fprintln(w, "Id\tDay\tStart      End\tDuration\tNotes")
-
-		var date time.Time
-		var dayDuration time.Duration
-		var dateString string
-
-		for i, entry := range entries {
-			end := ""
-			if entry.end != nil {
-				end = entry.end.Format("15:04:05")
-			}
-
-			duration, _ := entry.Duration()
-			dayDuration += duration
-
-			fmt.Fprintf(
-				w,
-				"%d\t%s\t%s - %s\t%s\t%s\n",
-				entry.id,
-				dateString,
-				entry.start.Format("15:04:05"),
-				end,
-				formatDuration(duration),
-				entry.note,
-			)
-
-			var next *Entry
-			if i+1 < len(entries) {
-				next = entries[i+1]
-			}
-
-			if next == nil || !sameDate(next.start, date) {
-				// new day
-
-				if i > 0 {
-					fmt.Fprintf(
-						w,
-						"\t\t\t%s\t\n",
-						formatDuration(dayDuration),
-					)
-				}
-
-				if next != nil {
-					date = next.start
-				}
-
-				dayDuration = 0
-				dateString = entry.start.Format("Mon Jan 2, 2006")
-			} else {
-				dateString = ""
-			}
-		}
-
-		return w.Flush()
+		var formatter formatters.JSON
+		return formatter.Write(os.Stdout, &types.FormatterInput{
+			Sheet:   sheet,
+			Entries: entries[:],
+		})
 	})
 
 	commands.AddCommand("sheet", "show sheets or change the current sheet", "[sheet]", func() error {
@@ -312,9 +290,9 @@ func main() {
 				"%s%s\t%s\t%s\t%s\n",
 				prefix,
 				sheet,
-				formatDuration(running),
-				formatDuration(today),
-				formatDuration(total),
+				utils.FormatDuration(running),
+				utils.FormatDuration(today),
+				utils.FormatDuration(total),
 			)
 		}
 
@@ -335,14 +313,14 @@ func main() {
 				return err
 			}
 
-			running := SumDuration(entries, func(e *Entry) bool {
+			running := utils.SumDuration(entries, func(e *types.Entry) bool {
 				_, running := e.Duration()
 				return running
 			})
-			today := SumDuration(entries, func(e *Entry) bool {
-				return sameDate(time.Now(), e.start)
+			today := utils.SumDuration(entries, func(e *types.Entry) bool {
+				return utils.SameDate(time.Now(), e.Start)
 			})
-			total := SumDuration(entries, func(e *Entry) bool {
+			total := utils.SumDuration(entries, func(e *types.Entry) bool {
 				return true
 			})
 
@@ -383,7 +361,7 @@ func main() {
 			}
 
 			str := fmt.Sprintf("are you sure you want to delete sheet \"%s\"?", input.Note)
-			if !confirm(str, false) {
+			if !utils.Confirm(str, false) {
 				return nil
 			}
 
@@ -401,12 +379,12 @@ func main() {
 			return fmt.Errorf("not entry with id %d found", input.ID)
 		}
 
-		str := fmt.Sprintf("are you sure you want to delete entry #%d (\"%s\")?", entry.id, entry.note)
-		if !confirm(str, false) {
+		str := fmt.Sprintf("are you sure you want to delete entry #%d (\"%s\")?", entry.ID, entry.Note)
+		if !utils.Confirm(str, false) {
 			return nil
 		}
 
-		if err := state.RemoveEntry(entry.id); err != nil {
+		if err := state.RemoveEntry(entry.ID); err != nil {
 			return err
 		}
 		fmt.Println("it's killed")
