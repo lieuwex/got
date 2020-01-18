@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"got/types"
 	"strconv"
 	"time"
@@ -115,23 +114,6 @@ func (s *State) StopEntry(id uint64, end time.Time) error {
 
 	_, err = s.db.Exec("update entries set end = ? where id = ?", end, id)
 	return err
-}
-func (s *State) ResumeEntry(id uint64, start time.Time) (uint64, error) {
-	current, err := s.GetCurrentEntry()
-	if err != nil {
-		return 0, err
-	} else if current != nil {
-		return 0, errors.New("already running")
-	}
-
-	entry, err := s.GetEntry(id)
-	if err != nil {
-		return 0, err
-	} else if entry == nil {
-		return 0, fmt.Errorf("no entry with id %d found", id)
-	}
-
-	return s.StartEntry(entry.Note, entry.Sheet, start)
 }
 
 func (s *State) SetLastCheckoutId(id uint64) error {

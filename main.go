@@ -179,7 +179,7 @@ func main() {
 			entry = entries[len(entries)-1]
 		}
 
-		newId, err := state.ResumeEntry(entry.ID, start)
+		newId, err := state.StartEntry(entry.Note, entry.Sheet, start)
 		if err != nil {
 			return err
 		}
