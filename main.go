@@ -157,29 +157,27 @@ func main() {
 			start = time.Now()
 		}
 
-		entry, err := state.GetEntry(input.ID)
-		if err != nil {
-			return err
-		}
-
-		sheet := state.CurrentSheet
-		id := input.ID
-
-		if entry == nil {
-			if rawId := input.Raw["id"]; rawId != "0" {
-				return fmt.Errorf("no entry with ID %s found", rawId)
+		var entry *types.Entry
+		if id := input.Raw["id"]; id != "0" {
+			var err error
+			entry, err = state.GetEntry(input.ID)
+			if err != nil {
+				return err
 			}
 
-			entries, err := state.GetAllEntries(sheet)
+			if entry == nil {
+				return fmt.Errorf("no entry with ID %s found", id)
+			}
+		} else {
+			entries, err := state.GetAllEntries(state.CurrentSheet)
 			if err != nil {
 				return err
 			}
 
 			entry = entries[len(entries)-1]
-			id = entry.ID
 		}
 
-		newId, err := state.ResumeEntry(id, start)
+		newId, err := state.ResumeEntry(entry.ID, start)
 		if err != nil {
 			return err
 		}
