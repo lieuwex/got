@@ -17,9 +17,8 @@ func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
 
 	fmt.Fprintln(w, "Id\tDay\tStart      End\tDuration\tNotes")
 
-	var date time.Time
 	var dayDuration time.Duration
-	var dateString string
+	newDay := true
 
 	for i, entry := range f.Entries {
 		end := ""
@@ -29,6 +28,11 @@ func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
 
 		duration, _ := entry.Duration()
 		dayDuration += duration
+
+		dateString := ""
+		if newDay {
+			dateString = entry.Start.Format("Mon Jan 2, 2006")
+		}
 
 		fmt.Fprintf(
 			w,
@@ -46,7 +50,7 @@ func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
 			next = f.Entries[i+1]
 		}
 
-		if next == nil || !utils.SameDate(next.Start, date) {
+		if next == nil || !utils.SameDate(next.Start, entry.Start) {
 			// new day
 
 			if i > 0 {
@@ -57,14 +61,10 @@ func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
 				)
 			}
 
-			if next != nil {
-				date = next.Start
-			}
-
 			dayDuration = 0
-			dateString = entry.Start.Format("Mon Jan 2, 2006")
+			newDay = true
 		} else {
-			dateString = ""
+			newDay = false
 		}
 	}
 
