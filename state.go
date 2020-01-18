@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+func scanEntry(s interface {
+	Scan(dest ...interface{}) error
+}) (types.DatabaseEntry, error) {
+	var e types.DatabaseEntry
+	return e, s.Scan(&e.ID, &e.Note, &e.Start, &e.End, &e.Sheet)
+}
+
 type State struct {
 	db *sql.DB
 
@@ -67,9 +74,7 @@ func (s *State) GetMeta() (map[string]string, error) {
 func (s *State) GetEntry(id uint64) (*types.Entry, error) {
 	row := s.db.QueryRow("select * from entries where id = ?", id)
 
-	var e types.DatabaseEntry
-
-	err := row.Scan(&e.ID, &e.Note, &e.Start, &e.End, &e.Sheet)
+	e, err := scanEntry(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -87,8 +92,7 @@ func (s *State) StartEntry(note, sheet string, start time.Time) (uint64, error) 
 	current, err := s.GetCurrentEntry()
 	if err != nil {
 		return 0, err
-	}
-	if current != nil {
+	} else if current != nil {
 		return 0, errors.New("already running")
 	}
 
@@ -144,16 +148,13 @@ func (s *State) GetCurrentEntry() (*types.Entry, error) {
 		return nil, err
 	}
 
-	entry, err := s.GetEntry(id)
-	return entry, err
+	return s.GetEntry(id)
 }
 func (s *State) GetLastEntry(sheet string) (*types.Entry, error) {
 	entries, err := s.GetAllEntries(sheet)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(entries) == 0 {
+	} else if len(entries) == 0 {
 		return nil, nil
 	}
 
@@ -175,8 +176,7 @@ func (s *State) GetAllEntries(sheetName string) ([]*types.Entry, error) {
 	}
 
 	for rows.Next() {
-		var e types.DatabaseEntry
-		err := rows.Scan(&e.ID, &e.Note, &e.Start, &e.End, &e.Sheet)
+		e, err := scanEntry(rows)
 		if err != nil {
 			return res, nil
 		}
@@ -192,17 +192,21 @@ func (s *State) GetAllEntries(sheetName string) ([]*types.Entry, error) {
 }
 
 func (s *State) SwitchSheet(sheet string) error {
-	current := s.CurrentSheet
-
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	tx.Exec("update meta set value = ? where key = ?", current, "last_sheet")
+	tx.Exec("update meta set value = ? where key = ?", s.CurrentSheet, "last_sheet")
 	tx.Exec("update meta set value = ? where key = ?", sheet, "current_sheet")
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.CurrentSheet = sheet
+
+	return nil
 }
 
 func (s *State) GetAllSheets() ([]string, error) {
