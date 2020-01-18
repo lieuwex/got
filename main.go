@@ -163,10 +163,12 @@ func main() {
 			entry, err = state.GetEntry(input.ID)
 			if err != nil {
 				return err
+			} else if entry == nil {
+				return fmt.Errorf("no entry with ID %s found", id)
 			}
 
-			if entry == nil {
-				return fmt.Errorf("no entry with ID %s found", id)
+			if entry.Sheet != state.CurrentSheet {
+				state.SwitchSheet(entry.Sheet)
 			}
 		} else {
 			entries, err := state.GetAllEntries(state.CurrentSheet)
