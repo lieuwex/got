@@ -119,6 +119,21 @@ func (s *State) StopEntry(id uint64, end time.Time) error {
 	_, err = s.db.Exec("update entries set end = ? where id = ?", end, id)
 	return err
 }
+func (s *State) EditEntry(id uint64, sheet, note string, start time.Time, end *time.Time) error {
+	_, err := s.db.Exec(
+		"update entries set sheet = ?, note = ?, start = ?, end = ? where id = ?",
+		sheet,
+		note,
+		start,
+		end,
+		id,
+	)
+	return err
+}
+func (s *State) RemoveEntry(id uint64) error {
+	_, err := s.db.Exec("delete from entries where id = ?", id)
+	return err
+}
 
 func (s *State) SetLastCheckoutId(id uint64) error {
 	_, err := s.db.Exec("update meta set value = ? where key = ?", id, "last_checkout_id")
@@ -230,10 +245,5 @@ func (s *State) GetAllSheets() ([]string, error) {
 
 func (s *State) RemoveSheet(name string) error {
 	_, err := s.db.Exec("delete from entries where sheet = ?", name)
-	return err
-}
-
-func (s *State) RemoveEntry(id uint64) error {
-	_, err := s.db.Exec("delete from entries where id = ?", id)
 	return err
 }

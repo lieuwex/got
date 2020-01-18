@@ -229,8 +229,13 @@ func main() {
 			return nil
 		}
 
-		_, err = state.db.Exec("update entries set note = ?, start = ?, end = ? where id = ?", entry.Note, entry.Start, entry.End, entry.ID)
-		if err != nil {
+		if err := state.EditEntry(
+			entry.ID,
+			entry.Sheet,
+			entry.Note,
+			entry.Start,
+			entry.End,
+		); err != nil {
 			return err
 		}
 
