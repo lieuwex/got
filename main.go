@@ -17,9 +17,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// TODO: make it posisble to use this program without running ruby timetrap
-// first
-
 var commands = MakeManager()
 
 func writeEntry(e *types.Entry, w io.Writer) error {
@@ -74,9 +71,23 @@ func getState() (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite3", path.Join(homedir, ".timetrap.db"))
+
+	fname := path.Join(homedir, ".timetrap.db")
+
+	dbNew := false
+	if _, err := os.Stat(fname); os.IsNotExist(err) {
+		dbNew = true
+	}
+
+	db, err := sql.Open("sqlite3", fname)
 	if err != nil {
 		return nil, err
+	}
+
+	if dbNew {
+		if err := runSchema(db); err != nil {
+			return nil, err
+		}
 	}
 
 	return MakeState(db)
