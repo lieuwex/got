@@ -198,7 +198,7 @@ func main() {
 		fmt.Printf("Resuming \"%s\" from entry #%d with new ID #%d\n", entry.Note, entry.ID, newId)
 		return nil
 	})
-	commands.AddCommand([]string{"now"}, "shot the current entry", "", func() error {
+	commands.AddCommand([]string{"now"}, "show the current entry", "", func() error {
 		entry, err := state.GetCurrentEntry()
 		if err != nil {
 			return err
