@@ -17,6 +17,7 @@ func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
 
 	fmt.Fprintln(w, "Id\tDay\tStart      End\tDuration\tNotes")
 
+	var totalDuration time.Duration
 	var dayDuration time.Duration
 	newDay := true
 
@@ -28,6 +29,7 @@ func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
 
 		duration, _ := entry.Duration()
 		dayDuration += duration
+		totalDuration += duration
 
 		dateString := ""
 		if newDay {
@@ -67,6 +69,9 @@ func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
 			newDay = false
 		}
 	}
+
+	fmt.Fprintf(w, "\t\t\t \n")
+	fmt.Fprintf(w, "\t\t\t%s\n", utils.FormatDuration(totalDuration))
 
 	return w.Flush()
 }
