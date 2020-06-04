@@ -8,5 +8,5 @@ type FormatterInput struct {
 }
 
 type Formatter interface {
-	Write(w io.Writer, input FormatterInput) error
+	Write(w io.Writer, input *FormatterInput) error
 }

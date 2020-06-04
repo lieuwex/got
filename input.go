@@ -2,6 +2,8 @@ package main
 
 import (
 	"got/flag"
+	"got/formatters"
+	"got/types"
 	"strconv"
 	"strings"
 	"time"
@@ -12,10 +14,11 @@ import (
 type Input struct {
 	Raw map[string]string
 
-	ID    uint64
-	Start time.Time
-	End   time.Time
-	At    time.Time
+	ID        uint64
+	Start     time.Time
+	End       time.Time
+	At        time.Time
+	Formatter types.Formatter
 
 	Command string
 	Note    string
@@ -30,6 +33,8 @@ func GetInput() (Input, error) {
 		"start": "",
 		"end":   "",
 		"at":    "",
+
+		"formatter": "human",
 	})
 	if err := fs.Parse(); err != nil {
 		return res, err
@@ -55,6 +60,15 @@ func GetInput() (Input, error) {
 	res.At, err = nd.Parse(atString, time.Now())
 	if err != nil {
 		res.At = time.Time{}
+	}
+	switch fs.Values["formatter"] {
+	case "human":
+		res.Formatter = &formatters.Human{}
+	case "json", "JSON":
+		res.Formatter = &formatters.JSON{}
+
+	default:
+		panic("invalid formatter " + fs.Values["formatter"])
 	}
 
 	if len(fs.Strings) > 0 {

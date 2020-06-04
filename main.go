@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"got/formatters"
 	"got/types"
 	"got/utils"
 	"io"
@@ -56,6 +55,7 @@ func usage() {
 	printFlag("at", "the time to use, this can be equal to --start or --end depending on the context.  always has a lower priority than --start or --end.")
 	printFlag("start", "the start time to use")
 	printFlag("end", "the end time to use")
+	printFlag("formatter", "the formatter to use.  can be 'human' or 'json'")
 
 	fmt.Fprintf(os.Stderr, "\ncommands:\n")
 	cmds := commands.GetByPrefix("")
@@ -274,8 +274,7 @@ func main() {
 			return fmt.Errorf("Can't find sheet matching \"%s\"", sheet)
 		}
 
-		var formatter formatters.Human
-		return formatter.Write(os.Stdout, &types.FormatterInput{
+		return input.Formatter.Write(os.Stdout, &types.FormatterInput{
 			Sheet:   sheet,
 			Entries: entries[:],
 		})
