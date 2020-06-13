@@ -406,6 +406,24 @@ func main() {
 		return nil
 	})
 
+	commands.AddCommand([]string{"idle"}, "show the time since you last checked out", "[sheet]", func() error {
+		sheet := input.Note
+		entries, err := state.GetAllEntries(sheet)
+		if err != nil {
+			return err
+		}
+
+		last := entries[len(entries)-1]
+		if last.End == nil {
+			return errors.New("running")
+		}
+
+		duration := time.Now().Sub(*last.End)
+		fmt.Println(utils.FormatDuration(duration))
+
+		return nil
+	})
+
 	commands.AddCommand([]string{"help"}, "show usage of a command", "<command>", func() error {
 		if input.Note == "" {
 			return errors.New("help requires a command")
