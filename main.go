@@ -414,13 +414,16 @@ func main() {
 		}
 
 		last := entries[len(entries)-1]
+
+		var duration time.Duration
 		if last.End == nil {
-			return errors.New("running")
+			beforeLast := entries[len(entries)-2]
+			duration = last.Start.Sub(*beforeLast.End)
+		} else {
+			duration = time.Now().Sub(*last.End)
 		}
 
-		duration := time.Now().Sub(*last.End)
 		fmt.Println(utils.FormatDuration(duration))
-
 		return nil
 	})
 
