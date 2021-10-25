@@ -411,6 +411,8 @@ func main() {
 		entries, err := state.GetAllEntries(sheet)
 		if err != nil {
 			return err
+		} else if len(entries) == 0 {
+			return errors.New("no entries")
 		}
 
 		last := entries[len(entries)-1]
