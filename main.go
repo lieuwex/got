@@ -437,7 +437,7 @@ func main() {
 
 		cmds := commands.GetByPrefix(input.Note)
 		if len(cmds) == 0 {
-			return fmt.Errorf("unknown command %s", input.Command)
+			return fmt.Errorf("unknown command %s", input.Note)
 		} else if len(cmds) > 1 {
 			return errors.New("ambigious command")
 		}
