@@ -82,3 +82,11 @@ func SumDuration(entries []*types.Entry, fn func(*types.Entry) bool) time.Durati
 
 	return res
 }
+
+func GetNth(entries []*types.Entry, i int) *types.Entry {
+	if i >= 0 && i < len(entries) {
+		return entries[i]
+	}
+
+	return nil
+}

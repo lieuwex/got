@@ -187,7 +187,10 @@ func main() {
 				return err
 			}
 
-			entry = entries[len(entries)-1]
+			entry = utils.GetNth(entries, len(entries)-1)
+			if entry == nil {
+				return errors.New("no entries")
+			}
 		}
 
 		newId, err := state.StartEntry(entry.Note, entry.Sheet, start)
@@ -411,15 +414,19 @@ func main() {
 		entries, err := state.GetAllEntries(sheet)
 		if err != nil {
 			return err
-		} else if len(entries) == 0 {
+		}
+
+		last := utils.GetNth(entries, len(entries)-1)
+		if last == nil {
 			return errors.New("no entries")
 		}
 
-		last := entries[len(entries)-1]
-
 		var duration time.Duration
 		if last.End == nil {
-			beforeLast := entries[len(entries)-2]
+			beforeLast := utils.GetNth(entries, len(entries)-2)
+			if beforeLast == nil {
+				return errors.New("no entry before current one")
+			}
 			duration = last.Start.Sub(*beforeLast.End)
 		} else {
 			duration = time.Now().Sub(*last.End)
