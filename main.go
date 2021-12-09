@@ -429,9 +429,10 @@ func main() {
 		return nil
 	})
 
-	commands.AddCommand([]string{"help"}, "show usage of a command", "<command>", func() error {
+	commands.AddCommand([]string{"help"}, "show usage (of a command)", "[command]", func() error {
 		if input.Note == "" {
-			return errors.New("help requires a command")
+			usage()
+			return nil
 		}
 
 		cmds := commands.GetByPrefix(input.Note)
