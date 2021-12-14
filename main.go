@@ -147,7 +147,7 @@ func main() {
 		if err != nil {
 			return err
 		} else if entry == nil {
-			return fmt.Errorf("no entry with id %d found", input.ID)
+			return fmt.Errorf("no entry with ID %d found", input.ID)
 		}
 
 		if err := state.StopEntry(input.ID, end); err != nil {
@@ -222,6 +222,8 @@ func main() {
 		entry, err := state.GetEntry(input.ID)
 		if err != nil {
 			return err
+		} else if entry == nil {
+			return fmt.Errorf("no entry with ID %d found", input.ID)
 		}
 
 		any := false
@@ -394,7 +396,7 @@ func main() {
 		if err != nil {
 			return err
 		} else if entry == nil {
-			return fmt.Errorf("not entry with id %d found", input.ID)
+			return fmt.Errorf("no entry with ID %d found", input.ID)
 		}
 
 		str := fmt.Sprintf("are you sure you want to delete entry #%d (\"%s\")?", entry.ID, entry.Note)
