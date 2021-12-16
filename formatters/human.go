@@ -11,7 +11,7 @@ import (
 
 type Human struct{}
 
-func (*Human) Write(out io.Writer, f *types.FormatterInput) error {
+func (Human) Write(out io.Writer, f *types.FormatterInput) error {
 	fmt.Printf("Timesheet: %s\n", f.Sheet)
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 

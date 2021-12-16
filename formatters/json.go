@@ -29,7 +29,7 @@ type output struct {
 
 type JSON struct{}
 
-func (*JSON) Write(out io.Writer, f *types.FormatterInput) error {
+func (JSON) Write(out io.Writer, f *types.FormatterInput) error {
 	var res output
 
 	sheets := make(map[string]*outputSheet)
@@ -67,11 +67,6 @@ func (*JSON) Write(out io.Writer, f *types.FormatterInput) error {
 	totalTime := utils.SumDuration(f.Entries, func(*types.Entry) bool { return true })
 	res.TotalTime = utils.FormatDuration(totalTime)
 
-	bytes, err := json.Marshal(res)
-	if err != nil {
-		return err
-	}
-
-	_, err = out.Write(bytes)
-	return err
+	enc := json.NewEncoder(out)
+	return enc.Encode(res)
 }

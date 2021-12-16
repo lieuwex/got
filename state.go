@@ -17,26 +17,40 @@ func scanEntry(s interface {
 
 type State struct {
 	db *sql.DB
+}
 
+type Meta struct {
 	LastCheckoutID uint64
-	CurrentEntry   *types.Entry
 	CurrentSheet   string
 	LastSheet      string
 }
 
 func MakeState(db *sql.DB) (*State, error) {
-	state := &State{
+	return &State{
 		db: db,
+	}, nil
+}
+
+func (s *State) GetMeta() (*Meta, error) {
+	getMeta := func() (map[string]string, error) {
+		rows, err := s.db.Query("select key, value from meta")
+		if err != nil {
+			return nil, err
+		}
+
+		res := make(map[string]string)
+		for rows.Next() {
+			var key, value string
+			if err := rows.Scan(&key, &value); err != nil {
+				return nil, err
+			}
+			res[key] = value
+		}
+
+		return res, nil
 	}
 
-	var err error
-
-	state.CurrentEntry, err = state.GetCurrentEntry()
-	if err != nil {
-		return nil, err
-	}
-
-	meta, err := state.GetMeta()
+	meta, err := getMeta()
 	if err != nil {
 		return nil, err
 	}
@@ -46,29 +60,11 @@ func MakeState(db *sql.DB) (*State, error) {
 		return nil, err
 	}
 
-	state.CurrentSheet = meta["current_sheet"]
-	state.LastSheet = meta["last_sheet"]
-	state.LastCheckoutID = lastCheckoutID
-
-	return state, nil
-}
-
-func (s *State) GetMeta() (map[string]string, error) {
-	rows, err := s.db.Query("select key, value from meta")
-	if err != nil {
-		return nil, err
-	}
-
-	res := make(map[string]string)
-	for rows.Next() {
-		var key, value string
-		if err := rows.Scan(&key, &value); err != nil {
-			return nil, err
-		}
-		res[key] = value
-	}
-
-	return res, nil
+	return &Meta{
+		CurrentSheet:   meta["current_sheet"],
+		LastSheet:      meta["last_sheet"],
+		LastCheckoutID: lastCheckoutID,
+	}, nil
 }
 
 func (s *State) GetEntry(id uint64) (*types.Entry, error) {
@@ -137,12 +133,7 @@ func (s *State) RemoveEntry(id uint64) error {
 
 func (s *State) SetLastCheckoutId(id uint64) error {
 	_, err := s.db.Exec("update meta set value = ? where key = ?", id, "last_checkout_id")
-	if err != nil {
-		return err
-	}
-
-	s.LastCheckoutID = id
-	return nil
+	return err
 }
 
 func (s *State) GetCurrentSheet() (string, error) {
@@ -212,16 +203,10 @@ func (s *State) SwitchSheet(sheet string) error {
 		return err
 	}
 
-	tx.Exec("update meta set value = ? where key = ?", s.CurrentSheet, "last_sheet")
-	tx.Exec("update meta set value = ? where key = ?", sheet, "current_sheet")
+	tx.Exec("UPDATE meta SET value=(SELECT value FROM meta WHERE key='current_sheet') WHERE key='last_sheet'")
+	tx.Exec("UPDATE meta SET value=? WHERE key='current_sheet'", sheet)
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	s.CurrentSheet = sheet
-
-	return nil
+	return tx.Commit()
 }
 
 func (s *State) GetAllSheets() ([]string, error) {

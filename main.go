@@ -104,14 +104,24 @@ func main() {
 		panic(err)
 	}
 
+	currentEntry, err := state.GetCurrentEntry()
+	if err != nil {
+		panic(err)
+	}
+
+	meta, err := state.GetMeta()
+	if err != nil {
+		panic(err)
+	}
+
 	if input.ID == 0 {
 		// if ID is not given..
-		if state.CurrentEntry != nil {
+		if currentEntry != nil {
 			// .. ID is the current entry
-			input.ID = state.CurrentEntry.ID
+			input.ID = currentEntry.ID
 		} else {
 			// .. or the last checkout ID.
-			input.ID = state.LastCheckoutID
+			input.ID = meta.LastCheckoutID
 		}
 	}
 
@@ -124,7 +134,7 @@ func main() {
 			start = time.Now()
 		}
 
-		sheet := state.CurrentSheet
+		sheet := meta.CurrentSheet
 
 		id, err := state.StartEntry(input.Note, sheet, start)
 		if err != nil {
@@ -154,7 +164,7 @@ func main() {
 			return err
 		}
 
-		sheet := state.CurrentSheet
+		sheet := meta.CurrentSheet
 
 		fmt.Printf("Checked out of sheet \"%s\" (%d).\n", sheet, input.ID)
 		return nil
@@ -178,11 +188,11 @@ func main() {
 				return fmt.Errorf("no entry with ID %s found", id)
 			}
 
-			if entry.Sheet != state.CurrentSheet {
+			if entry.Sheet != meta.CurrentSheet {
 				state.SwitchSheet(entry.Sheet)
 			}
 		} else {
-			entries, err := state.GetAllEntries(state.CurrentSheet)
+			entries, err := state.GetAllEntries(meta.CurrentSheet)
 			if err != nil {
 				return err
 			}
@@ -207,7 +217,7 @@ func main() {
 			return err
 		}
 
-		sheet := state.CurrentSheet
+		sheet := meta.CurrentSheet
 
 		if entry == nil {
 			fmt.Fprintf(os.Stderr, "*%s: not running\n", sheet)
@@ -265,7 +275,7 @@ func main() {
 		sheet := input.Note
 		switch input.Note {
 		case "":
-			sheet = state.CurrentSheet
+			sheet = meta.CurrentSheet
 		case "all", "full": // TODO full /= all
 			sheet = ""
 		}
@@ -318,7 +328,7 @@ func main() {
 
 		fmt.Fprintf(w, " Timesheet\tRunning\tToday\tTotal Time\n")
 		for _, sheet := range sheets {
-			curr, last := sheet == state.CurrentSheet, sheet == state.LastSheet
+			curr, last := sheet == meta.CurrentSheet, sheet == meta.LastSheet
 
 			prefix := " "
 			if curr {
@@ -357,7 +367,7 @@ func main() {
 		}
 
 		if !foundCurrent {
-			printInfo("*", state.CurrentSheet, 0, 0, 0)
+			printInfo("*", meta.CurrentSheet, 0, 0, 0)
 		}
 
 		return w.Flush()
