@@ -423,6 +423,13 @@ func main() {
 
 	commands.AddCommand([]string{"idle"}, "show the time since you last checked out", "[sheet]", func() error {
 		sheet := input.Note
+		switch sheet {
+		case "":
+			sheet = meta.CurrentSheet
+		case "all", "full": // TODO: full /= all
+			sheet = ""
+		}
+
 		entries, err := state.GetAllEntries(sheet)
 		if err != nil {
 			return err
