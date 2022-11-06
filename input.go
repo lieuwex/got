@@ -18,6 +18,7 @@ type Input struct {
 	Start     time.Time
 	End       time.Time
 	At        time.Time
+	Filter    string
 	Formatter types.Formatter
 
 	Command string
@@ -33,6 +34,8 @@ func GetInput() (Input, error) {
 		"start": "",
 		"end":   "",
 		"at":    "",
+
+		"filter": "",
 
 		"formatter": "human",
 	})
@@ -61,6 +64,7 @@ func GetInput() (Input, error) {
 	if err != nil {
 		res.At = time.Time{}
 	}
+	res.Filter = fs.Values["filter"]
 	switch fs.Values["formatter"] {
 	case "human":
 		res.Formatter = &formatters.Human{}

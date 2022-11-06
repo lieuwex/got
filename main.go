@@ -289,6 +289,18 @@ func main() {
 			return fmt.Errorf("Can't find sheet matching \"%s\"", sheet)
 		}
 
+		if input.Filter != "" {
+			filtered := []*types.Entry{}
+			for _, entry := range entries {
+				if entry.Note != input.Filter {
+					continue
+				}
+
+				filtered = append(filtered, entry)
+			}
+			entries = filtered
+		}
+
 		return input.Formatter.Write(os.Stdout, &types.FormatterInput{
 			Sheet:   sheet,
 			Entries: entries[:],
