@@ -217,15 +217,13 @@ func main() {
 			return err
 		}
 
-		sheet := meta.CurrentSheet
-
 		if entry == nil {
-			fmt.Fprintf(os.Stderr, "*%s: not running\n", sheet)
+			fmt.Fprintf(os.Stderr, "*%s: not running\n", meta.CurrentSheet)
 			return nil
 		}
 
 		duration, _ := entry.Duration()
-		fmt.Printf("*%s: %s (%s)\n", sheet, utils.FormatDuration(duration), entry.Note)
+		fmt.Printf("*%s: %s (%s)\n", entry.Sheet, utils.FormatDuration(duration), entry.Note)
 		return nil
 	})
 	commands.AddCommand([]string{"edit"}, "edit an entry", "[--id (current/last)] [--start] [--end] [note]", func() error {
