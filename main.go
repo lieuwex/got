@@ -291,7 +291,7 @@ func main() {
 		if input.Filter != "" {
 			filtered := []*types.Entry{}
 			for _, entry := range entries {
-				if entry.Note != input.Filter {
+				if !strings.Contains(entry.Note, input.Filter) {
 					continue
 				}
 
