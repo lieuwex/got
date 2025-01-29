@@ -56,6 +56,7 @@ func usage() {
 	printFlag("start", "the start time to use")
 	printFlag("end", "the end time to use")
 	printFlag("formatter", "the formatter to use.  can be 'human' or 'json'")
+	printFlag("filter", "filter some outputs based on entry note")
 
 	fmt.Fprintf(os.Stderr, "\ncommands:\n")
 	cmds := commands.GetByPrefix("")
