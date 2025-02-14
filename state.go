@@ -173,9 +173,9 @@ func (s *State) GetAllEntries(sheetName string) ([]*types.Entry, error) {
 	var rows *sql.Rows
 	var err error
 	if sheetName != "" {
-		rows, err = s.db.Query("select * from entries where sheet = ?", sheetName)
+		rows, err = s.db.Query("select * from entries where sheet = ? order by start asc", sheetName)
 	} else {
-		rows, err = s.db.Query("select * from entries")
+		rows, err = s.db.Query("select * from entries order by start asc")
 	}
 	if err != nil {
 		return res, nil
