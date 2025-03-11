@@ -385,7 +385,8 @@ func main() {
 	})
 
 	commands.AddCommand([]string{"kill"}, "delete an entry or sheet", "--id <id>\n\t<sheet>", func() error {
-		if input.Raw["id"] == "0" { // kill timesheet
+		idEmpty := input.Raw["id"] == "0"
+		if idEmpty && input.Note != "" { // kill timesheet
 			sheets, err := state.GetAllSheets()
 			if err != nil {
 				return err
@@ -413,11 +414,21 @@ func main() {
 			return nil
 		}
 
-		entry, err := state.GetEntry(input.ID)
-		if err != nil {
-			return err
-		} else if entry == nil {
-			return fmt.Errorf("no entry with ID %d found", input.ID)
+		var entry *types.Entry
+		if idEmpty {
+			entry, err = state.GetLastEntry(meta.CurrentSheet)
+			if err != nil {
+				return err
+			} else if entry == nil {
+				return errors.New("no entries")
+			}
+		} else {
+			entry, err = state.GetEntry(input.ID)
+			if err != nil {
+				return err
+			} else if entry == nil {
+				return fmt.Errorf("no entry with ID %d found", input.ID)
+			}
 		}
 
 		str := fmt.Sprintf("are you sure you want to delete entry #%d (\"%s\")?", entry.ID, entry.Note)
