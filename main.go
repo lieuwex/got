@@ -193,13 +193,10 @@ func main() {
 				state.SwitchSheet(entry.Sheet)
 			}
 		} else {
-			entries, err := state.GetAllEntries(meta.CurrentSheet)
+			entry, err = state.GetLastEntry(meta.CurrentSheet)
 			if err != nil {
 				return err
-			}
-
-			entry = utils.GetNth(entries, len(entries)-1)
-			if entry == nil {
+			} else if entry == nil {
 				return errors.New("no entries")
 			}
 		}
